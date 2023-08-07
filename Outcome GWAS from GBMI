@@ -1,0 +1,106 @@
+library(data.table)
+library(dplyr)
+library(TwoSampleMR)
+
+
+
+available_outcomes<-read.csv("XXXXXX/available_outcomes.csv",header = T)
+head(available_outcomes)
+write.csv(available_outcomes,file = "available_outcomes.csv")
+
+restBind<-as.data.frame(matrix(nrow = 0, ncol = 13))
+colnames(restBind)<-c("id.exposure", "id.outcome","outcome", "exposure", "method", "nsnp", "b", "se",
+                      "pval", "Q", "Q_df", "Q_pval", "egger_intercept")
+restBind
+restFix<-as.data.frame(matrix(nrow = 1, ncol = 4))
+colnames(restFix)<-c("Q", "Q_df", "Q_pval", "egger_intercept")
+restFix
+
+a<-fread("C:/Users/84759/Desktop/Phewas of COPD/COPD.txt")
+a<-data.frame(a)
+a$id.outcome<-"COPD"
+a$outcome<-"COPD"
+a <- a[,c(9,5,4,6,3,18,19,10,8,7)]
+colnames(a)<-c("P","SNP","effect_allele.outcome","eaf.outcome","other_allele.outcome","id.outcome","outcome","OR","se.outcome","beta.outcome")
+head(a)
+
+
+#修改1
+for (id in available_outcomes[39550:50000,]$id){ # which(available_outcomes$id %in% c("ieu-b-40", "ieu-b-43"))  # eqtl-a-ENSG00000255150  
+  test2<-(try(exposure_dat<-extract_instruments(outcomes = id,
+                                                p1 = 5e-08,
+                                                clump = TRUE,
+                                                p2 = 5e-08,
+                                                r2 = 0.001,
+                                                kb = 10000,
+                                                access_token = ieugwasr::check_access_token(),
+                                                force_server = FALSE)))
+  if(class(test2) == "NULL") {
+    restFix2<-as.data.frame(matrix(nrow = 1, ncol = 13))
+    colnames(restFix2)<-c("id.exposure", "id.outcome","outcome", "exposure", "method", "nsnp", "b", "se",
+                          "pval", "Q", "Q_df", "Q_pval", "egger_intercept")
+    restFix2[1,1]<-id
+    restFix2
+    restBind<-rbind(restBind, restFix2)
+  }
+  else{
+    exposure_dat<-extract_instruments(outcomes = id,
+                                      p1 = 5e-08,
+                                      clump = TRUE,
+                                      p2 = 5e-08,
+                                      r2 = 0.001,
+                                      kb = 10000,
+                                      access_token = ieugwasr::check_access_token(),
+                                      force_server = FALSE)
+#修改2------------    
+    outcome <- merge(exposure_dat,NAFLD,by.x="SNP",by.y="SNP",all=F)
+    #dim(outcome)
+    #head(outcome)
+    exposure_dat<-outcome[,c(1:14)]
+    outcome<-outcome[,c(1,15:24)]
+    outcome<-subset(outcome,P>5e-08)
+    
+    test1<-(try(dat <- harmonise_data(exposure_dat = exposure_dat,
+                                      outcome_dat = outcome,
+                                      action = 2)))
+    if (class(test1) == "try-error") {
+      restFix1<-as.data.frame(matrix(nrow = 1, ncol = 13))
+      colnames(restFix1)<-c("id.exposure", "id.outcome","outcome", "exposure", "method", "nsnp", "b", "se",
+                            "pval", "Q", "Q_df", "Q_pval", "egger_intercept")
+      restFix1[1,1]<-id
+      restFix1
+      restBind<-rbind(restBind, restFix1)
+    }
+    else{
+      dat <- harmonise_data(exposure_dat = exposure_dat,
+                            outcome_dat = outcome,
+                            action = 2)
+      # MR
+      test3<-(try(res <- mr(dat)))
+      if (dim(test3)[1] == 0) {
+        restFix3<-as.data.frame(matrix(nrow = 1, ncol = 13))
+        colnames(restFix3)<-c("id.exposure", "id.outcome","outcome", "exposure", "method", "nsnp", "b", "se",
+                              "pval", "Q", "Q_df", "Q_pval", "egger_intercept")
+        restFix3[1,1]<-id
+        restFix3
+        restBind<-rbind(restBind, restFix3)
+      }
+      else{
+        res <- mr(dat)
+        restBindsub<-bind_rows(res)
+        if (dim(restBindsub)[2] != 13){
+          restBindsub<-cbind(restBindsub, restFix)
+          restBind<-rbind(restBind, restBindsub)
+        }
+        else{
+          restBind<-rbind(restBind, restBindsub)
+        }
+      }
+    }
+    
+    print(id)}
+}
+
+read(restBind)
+#修改3
+write.csv(restBind, "NAFLD_37340-42334.csv", row.names = F, quote = T)
