@@ -26,7 +26,7 @@ head(a)
 
 
 #修改1
-for (id in available_outcomes[39550:50000,]$id){ # which(available_outcomes$id %in% c("ieu-b-40", "ieu-b-43"))  # eqtl-a-ENSG00000255150  
+for (id in available_outcomes[1:50000,]$id){ # which(available_outcomes$id %in% c("ieu-b-40", "ieu-b-43"))  # eqtl-a-ENSG00000255150  
   test2<-(try(exposure_dat<-extract_instruments(outcomes = id,
                                                 p1 = 5e-08,
                                                 clump = TRUE,
