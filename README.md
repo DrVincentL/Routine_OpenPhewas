@@ -3,11 +3,18 @@ Phewas based on Open GWAS
 
 ## Installation
 
+Recommended Packages to install:
+
 library(data.table)
+
 library(dplyr)
+
 library(TwoSampleMR)
+
 library(epiDisplay)
+
 library(tidyr)
+
 library(rio)
 
 ## Description
